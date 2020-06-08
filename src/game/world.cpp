@@ -1,0 +1,139 @@
+/*
+ * Created By Valentin Favre (1°y in Esqese School in Numerical Sc.)
+ * File :world.cpp
+ * Description: Gestinnaire du jeu (bullet System inspired by Alexander Zotov
+ * on C# on youtube and open source Danmaku games on git hub ( DStagg /Shmup )
+ *
+ */
+#include <vector>
+#include <cmath>
+#include <algorithm>
+#include <SFML/Audio.hpp>
+#include "../../include/game/world.h"
+#include "../../include/objects/resources.h"
+#include "../../include/system/spawner.h"
+#include "../../include/objects/bullet.h"
+#include "../../include/game/player.h"
+#include "../../include/game/game.h"
+#include "../../include/menu/pause.h"
+#include "../../include/system/hitbox.h"
+#include "../../include/system/input.h"
+
+
+#define max(a,b) (a < b ? b : a)
+
+World::World(Game &g) : GameState{g}, player{std::make_unique<Player>()}, b{"../ressources/bg/bg.jpg", g.getOptions()} {
+    double player_vel = 5.0;
+
+    setKeymap({
+        { {sf::Keyboard::Q}, {}, std::make_shared<Commands::Player::MoveLeft>(*this, *player, player_vel)},
+        { {sf::Keyboard::D}, {}, std::make_shared<Commands::Player::MoveRight>(*this, *player, player_vel)},
+        { {sf::Keyboard::Z}, {}, std::make_shared<Commands::Player::MoveUp>(*this, *player, player_vel)},
+        { {sf::Keyboard::S}, {}, std::make_shared<Commands::Player::MoveDown>(*this, *player, player_vel)},
+        { {sf::Keyboard::Space}, {}, std::make_shared<Commands::Player::Shoot>(*this, *player)},
+        { {sf::Keyboard::X}, {}, std::make_shared<Commands::Player::Bomb>(*this, *player)},
+        { {}, {sf::Keyboard::Escape}, std::make_shared<Commands::World::Pause>(*this)}
+    });
+
+    parent.getClock().restart();
+
+    player->setLocation({100,900});
+    view.reset({100, 900, (float)parent.getOptions().SCREEN_WIDTH, (float)parent.getOptions().SCREEN_HEIGHT});
+    window.setView(view);
+    std::shared_ptr<Spawner> s = std::make_shared<Spawners::BoWaP>(5, 3, 0.05, 5);
+    s->setLocation({300,200});
+    registerSpawner(s);
+}
+
+
+
+World::~World() {
+    window.setView(window.getDefaultView());
+}
+
+
+void World::registerBullet(std::shared_ptr<Bullet> b) {
+    bullet.push_back(b);
+}
+
+void World::registerPlayerBullet(std::shared_ptr<Bullet> b) {
+    player_bullet.push_back(b);
+}
+
+void World::registerSpawner(std::shared_ptr<Spawner> s) {
+    spawner.push_back(s);
+}
+
+int World::getFrame() {
+    return parent.getClock().getTicker();
+    //return round(parent.getClock().getElapsedTime().asSeconds() * parent.getOptions().FRAME_LIMIT);
+}
+
+void World::moveBullets(double velocity_factor) {
+    for (std::shared_ptr<Bullet> b : bullet) {
+        b->move(velocity_factor);
+    }
+
+    for (std::shared_ptr<Bullet> b : player_bullet) {
+        b->move(velocity_factor);
+    }
+
+    auto is_oob = [](std::shared_ptr<Bullet> b) -> bool {
+        Vec2 v = b->getLocation();
+        return (v.x < -10 || v.x > 1000 || v.y < -10 || v.y > 1200);
+    };
+    bullet.erase(std::remove_if(bullet.begin(), bullet.end(), is_oob), bullet.end());
+    player_bullet.erase(std::remove_if(player_bullet.begin(), player_bullet.end(), is_oob), player_bullet.end());
+}
+
+void World::spawnBullets() {
+    for (std::shared_ptr<Spawner> s : spawner) {
+        for (std::shared_ptr<Bullet> b : s->getBullets(getFrame())) {
+            registerBullet(b);
+        }
+    }
+
+    auto is_dead = [this](std::shared_ptr<Spawner> s) -> bool {
+        return s->isFinished();
+    };
+    spawner.erase(std::remove_if(spawner.begin(), spawner.end(), is_dead), spawner.end());
+}
+
+void World::checkCollisions() {
+    for (std::shared_ptr<Bullet> b : bullet) {
+        if (intersect({b->getLocation(), b->getHitboxRadius()}, {player->getLocation(), player->getHitboxRadius()})) {
+            parent.popState(1);
+            return;
+        }
+    }
+}
+
+
+
+void World::update() {
+
+    double velocity_factor = (parent.getOptions().FRAME_SYNC ? parent.getClock().lap().asSeconds() * parent.getOptions().REF_FRAME : 1.0);
+    player->move(velocity_factor);
+    player->getVelocity().x = 0;
+    player->getVelocity().y = 0;
+    view.setCenter(max(parent.getOptions().SCREEN_WIDTH/2, player->getLocation().x), max(parent.getOptions().SCREEN_HEIGHT/2, player->getLocation().y));
+    window.setView(view);
+    parent.getClock().tick();
+    moveBullets(velocity_factor);
+    spawnBullets();
+    checkCollisions();
+}
+
+void World::draw() {
+    window.clear();
+    b.draw(window);
+    for (std::shared_ptr<Bullet> b : bullet) {
+        b->draw(window);
+    }
+    for (std::shared_ptr<Bullet> b : player_bullet) {
+        b->draw(window);
+    }
+
+    player->draw(window);
+    window.display();
+}

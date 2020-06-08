@@ -1,0 +1,1 @@
+CLION compilation (Put every dll on cmake-debug folder)

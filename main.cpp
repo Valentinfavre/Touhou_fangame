@@ -1,65 +1,28 @@
-//
-// Created by favre.valentin on 17/04/2020.
-//
+/*
+ * Created By Valentin Favre (1°y in Esqese School in Numerical Sc.)
+ * File :main.cpp
+ * Description:Coeur du system (la boucle est réduite car son utilisation est comme
+ * la SFML mais gérer par le moteur de jeu mis en place par moi méme et inspirée du systéme unity3D mis en place par
+ * alexander Zohov sur unity 3d
+ *
+ *
+ */
+#include "./include/game/game.h"
 
-#include "main.hpp"
-#include "menu.hpp"
+
 
 int main() {
-
-    sf::RenderWindow window(sf::VideoMode(1920, 1080), "Touhou XVI, Revenge of Flandre Scarlet ",
-                            sf::Style::Fullscreen);
-
-    Menu menu(window.getSize().x, window.getSize().y);
-
-    // Fais Tourner le programme
-    while (window.isOpen()) {
-        // Check les events du jeu
-        sf::Event event;
-        while (window.pollEvent(event)) {
-            switch (event.type) {
-                case sf::Event::KeyReleased:
-                    switch (event.key.code) {
-
-                        case sf::Keyboard::Up:
-                            menu.MoveUp();
-                            break;
-
-                        case sf::Keyboard::Down:
-                            menu.MoveDown();
-                            break;
-
-                        case sf::Keyboard::Return:
-                            switch (menu.Getpresseditem()) {
-                                case 0:
-                                    std::cout << "play button was selected" << std::endl;
-                                    break;
-                                case 1:
-                                    std::cout << "option Button was selected" << std::endl;
-                                    break;
-                                case 2:
-                                    std::cout << "Quit Game was Selected" << std::endl;
-                                    window.close();
-                                    break;
-
-
-                            }
-                    }
-
-            }
-            // Requéte de fermeture de fenétre et de fin de programme
-            if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape))
-                window.close();
-        }
-
-        window.clear();
-
-        menu.draw(window);
-
-
-        window.display();
+    sf::Music Music1;
+    if (!Music1.openFromFile("../ressources/audio/gamethme.wav"))
+    {
+        // Erreur...
     }
+    Music1.play();
+    Game G;
 
-    return 0;
-
+    while (!G.isFinished()) {
+        G.handleInput();
+        G.update();
+        G.draw();
+    }
 }

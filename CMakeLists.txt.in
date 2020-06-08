@@ -1,0 +1,14 @@
+cmake_minimum_required(VERSION 2.8.2)
+
+project(sfml-download NONE)
+
+include(ExternalProject)
+ExternalProject_Add(sfml
+        GIT_REPOSITORY    ${GIT_URL}
+        GIT_TAG           master
+        SOURCE_DIR        "${CMAKE_CURRENT_BINARY_DIR}/${NAME}-src"
+        BINARY_DIR        "${CMAKE_CURRENT_BINARY_DIR}/${NAME}-build"
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND     ""
+        INSTALL_COMMAND   ""
+        TEST_COMMAND      "")
